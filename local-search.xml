@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  
+  
+  
+  <entry>
+    <title>bool盲注</title>
+    <link href="/2021/02/13/bool%E7%9B%B2%E6%B3%A8/"/>
+    <url>/2021/02/13/bool%E7%9B%B2%E6%B3%A8/</url>
+    
+    <content type="html"><![CDATA[<p><img src="/images/3.jpg" alt="3"></p><h2 id="一、布尔-bool-盲注"><a href="#一、布尔-bool-盲注" class="headerlink" title="一、布尔(bool)盲注"></a>一、布尔(bool)盲注</h2><p>&emsp;&emsp;首先我们来了解一下什么是盲注。我们都知道，一般sql注入是存在回显的，即当你输入你构造的语句后，浏览器页面会给你显示出你想要的结果。回显是我们判断自己的语句是否正确的重要依据，不仅如此，我们获取到的数据信息也是显示在页面上的。但是盲注不同，我们在做一些sql注入时浏览器不会显示出详细信息，只会给出两个不同的页面，类似bool值一样只有零一。那我们如何注入呢？举个例子，我们可以问服务器，数据库的第一个字母是a吗？这时页面会返回“是”或“不是”，我们就可以根据这种方式来判断出各种数据信息(实际应用则是利用脚本或burp等来爆破出各种信息)。</p><h2 id="二、相关函数"><a href="#二、相关函数" class="headerlink" title="二、相关函数"></a>二、相关函数</h2><pre><code>在了解到真正的布尔盲注前，让我们先来看看相关的函数，方便我们对布尔盲注的理解。</code></pre><h3 id="1、Length-函数"><a href="#1、Length-函数" class="headerlink" title="1、Length()函数"></a>1、Length()函数</h3>]]></content>
+    
+    
+    <categories>
+      
+      <category>web</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>sql</tag>
+      
+      <tag>web</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>报错注入</title>
+    <link href="/2021/02/08/%E6%8A%A5%E9%94%99%E6%B3%A8%E5%85%A5/"/>
+    <url>/2021/02/08/%E6%8A%A5%E9%94%99%E6%B3%A8%E5%85%A5/</url>
+    
+    <content type="html"><![CDATA[<p><img src="/images/2.jpg" alt="2"></p><h2 id="一、简介"><a href="#一、简介" class="headerlink" title="一、简介"></a>一、简介</h2><p>​    报错注入有12种，分别是:floor报错、ExtractValue报错、UpdateXml报错、NAME_CONST报错、join报错、exp报错、GeometryCollection报错、polygon报错、multipoint报错、multlinestring报错、multpolygon报错、linestring报错。本文将探究基于floor的sql报错注入，介绍其原理及利用方法。</p><h2 id="二、相关函数"><a href="#二、相关函数" class="headerlink" title="二、相关函数"></a>二、相关函数</h2><p>​    在讲原理之前我们需要先了解一下相关sql语句以及几个sql函数的知识，然后对才能对原理理解。</p><h3 id="1、floor函数"><a href="#1、floor函数" class="headerlink" title="1、floor函数"></a>1、floor函数</h3><p>​    本篇主要是围绕floor报错注入进行论述，所以我们先来了解一下什么是floor？floor在这指的是sql中的floor函数，floor(value)函数返回小于或等于指定值（value）的最小整数，如:</p><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-built_in">floor</span>(<span class="hljs-number">555.5</span>)=<span class="hljs-number">555</span>;<span class="hljs-built_in">floor</span>(<span class="hljs-number">555.4</span>)=<span class="hljs-number">555</span>                                                         <br></code></pre></td></tr></table></figure><p>floor函数不仅在sql中存在，在Excel、c语言、python、JavaScript中也有广泛应用。</p><h3 id="2、rand函数"><a href="#2、rand函数" class="headerlink" title="2、rand函数"></a>2、rand函数</h3><p>​    对与rand函数，有过编程基础的应该知道，这是随机数函数，sql中的rand函数用于产生0到1之间的随机数，例如执行语句:</p><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs sql"><span class="hljs-keyword">select</span> rand();      <br></code></pre></td></tr></table></figure><p>可得到下面的结果:</p><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs sql"><span class="hljs-operator">+</span><span class="hljs-comment">------------------+                                                                 </span><br><span class="hljs-operator">|</span> RAND( )          <span class="hljs-operator">|</span>                                                                 <br><span class="hljs-operator">+</span><span class="hljs-comment">------------------+                                                                 </span><br><span class="hljs-operator">|</span> <span class="hljs-number">0.79257156412541</span> <span class="hljs-operator">|</span>                                                                 <br><span class="hljs-operator">+</span><span class="hljs-comment">------------------+                                                                 </span><br></code></pre></td></tr></table></figure><p>当然它并非无参数，默认情况就是这样，如果给它一个参数即随机数种子,可以生成一个伪随机序列。结合前面的floor，我们可以构造语句:</p><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs sql"><span class="hljs-built_in">floor</span>(rand(<span class="hljs-number">0</span>)<span class="hljs-operator">*</span><span class="hljs-number">2</span>)                                   <br></code></pre></td></tr></table></figure><p>由于加了随机因子0，所以每次执行语句都会产生伪随机序列0 1 1 0 1 1…. 。</p><h3 id="3、count与group-by函数"><a href="#3、count与group-by函数" class="headerlink" title="3、count与group by函数"></a>3、count与group by函数</h3><p>​    COUNT() 函数返回匹配指定条件的行数，COUNT(*) 函数返回表中的记录数，GROUP BY 语句用于结合合计函数，根据一个或多个列对结果集进行分组。这里不再举例。</p><h2 id="三、原理"><a href="#三、原理" class="headerlink" title="三、原理"></a>三、原理</h2><p>​    floor报错的原理，其实关键在于floor(rand(0)*2)语句的多次执行，造成虚拟表中主键的重复，导致报错。具体的sql语句如下:</p><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs sql"><span class="hljs-keyword">select</span> <span class="hljs-built_in">count</span>(<span class="hljs-operator">*</span>),(<span class="hljs-built_in">floor</span>(rand(<span class="hljs-number">0</span>)<span class="hljs-operator">*</span><span class="hljs-number">2</span>)) x <span class="hljs-keyword">from</span> users <span class="hljs-keyword">group</span> <span class="hljs-keyword">by</span> x        <br></code></pre></td></tr></table></figure><p>让我们来详细解读一下这句话的意思。</p><p>​    首先，我们来看一下语句执行的过程。在执行以上语句时，mysql会先建立一个虚拟表，然后开始查询数据，取数据库中的数据，如果虚拟表中没有相等的键值，就会添加对应的记录，如果找到相应的键值，就会count(*)++。这也就是这条语句执行的基本过程。这个过程对接下来的介绍非常重要。</p><p>​    除了使用count与group函数，还用到了floor(rand(0)*2)，让我们来看看，这个语句与上面的查询过程有何联系，与就是整条语句执行的过程是什么样的。</p><p>​    首先，建立虚拟表(空表)，开始查询。执行<code>floor(rand(0)*2)</code>结果为0(伪随机序列)，与第一条记录比较，发现不存在与之相等的键值，然后再次执行<code>floor(rand(0)*2)</code>结果为1，讲1添加至虚拟表中，生成第一条记录。继续查询，再次计算<code>floor(rand(0)*2)</code>结果为1,查询虚拟表，发现与之相等的键值，于是执行count(*)++。到这里，虽然floor语句没有按照我们的想法去执行，但结果还是正常的，未发生报错，我们接着往下看。</p><p>​    继续查询，执行<code>floor(rand(0)*2)</code>结果为0，查询虚拟表，未发现键值为零，再次执行<code>floor(rand(0)*2)</code>结果为1，插入虚拟表中，但是此时虚拟表中已经存在键值为一的主键，所以造成了主键的重复导致了报错。</p><p>​    从以上语句执行过程中我们可以看出导致这条语句报错的原因也就是刚开始说的那句话：<code>floor(rand(0)*2)</code>语句的多次执行。</p><p>​    这就是基于floor的报错原理，准确的来说是<code>floor(rand(0)*2)</code>报错的原理，因为我们还没有讨论<code>floor(rand()*2)</code>导致的报错。看了以上语句执行的过程，其实我们已经知道，令<code>floor(rand()*2)</code>报错的条件就是虚拟表中不能同时存在1与0，由于rand(0)会生成伪随机序列，所以我们可以确定当使用rand(0)时，只要数据记录大于三条就一定会报错，而rand()不一定会报错，因为没有随机因子，所以它是随机出错的。</p><h2 id="四、利用"><a href="#四、利用" class="headerlink" title="四、利用"></a>四、利用</h2><p>​    理解了上面的原理后，你可能会有些许疑惑：报错是出来了,它怎么用呢？接下来就让我们看看它的利用。<br>  首先，让我们来看看常用的payload:<br>  <figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs sql"><span class="hljs-keyword">and</span> <span class="hljs-keyword">select</span> <span class="hljs-number">1</span> <span class="hljs-keyword">from</span> (<span class="hljs-keyword">select</span> <span class="hljs-built_in">count</span>(<span class="hljs-operator">*</span>),concat(database(),<span class="hljs-built_in">floor</span>(rand(<span class="hljs-number">0</span>)<span class="hljs-operator">*</span><span class="hljs-number">2</span>))x <span class="hljs-keyword">from</span> information_schema.tables <span class="hljs-keyword">group</span> <span class="hljs-keyword">by</span> x)a)<br></code></pre></td></tr></table></figure><br>  database()处即为语句执行处，上面我们已经说到了，为何会报错。报错后会提示错误信息，如下：<br>  <figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs sql">ERROR <span class="hljs-number">1062</span> (<span class="hljs-number">23000</span>): Duplicate entry <span class="hljs-string">&#x27;myemployees1&#x27;</span> <span class="hljs-keyword">for</span> key <span class="hljs-string">&#x27;group_key&#x27;</span><br></code></pre></td></tr></table></figure><br>  可以看到，虽然报错了，但是database()语句也成功执行了，所以可以利用此处的语句执行来得到我们想要的数据信息等。</p>]]></content>
+    
+    
+    <categories>
+      
+      <category>web</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>sql</tag>
+      
+      <tag>web</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>宽字节注入</title>
+    <link href="/2021/02/04/%E5%AE%BD%E5%AD%97%E8%8A%82%E6%B3%A8%E5%85%A5/"/>
+    <url>/2021/02/04/%E5%AE%BD%E5%AD%97%E8%8A%82%E6%B3%A8%E5%85%A5/</url>
+    
+    <content type="html"><![CDATA[<h2 id="一、简介"><a href="#一、简介" class="headerlink" title="一、简介"></a>一、简介</h2><p>​    宽字节注入就是sql注入的一种，与普通的sql注入不通，在我们测试payload时会发现它对‘这个符号进行了转义，而绕过它的方法也很简单，在单引号前加入%df(这里不单指%df这一个，其它的也可，下面会说到)即可绕过。其中涉及到的知识有GBK编码、URL转码等等。</p><h2 id="二、原理"><a href="#二、原理" class="headerlink" title="二、原理"></a>二、原理</h2><h3 id="1、GBK编码"><a href="#1、GBK编码" class="headerlink" title="1、GBK编码"></a>1、GBK编码</h3><p>​            GBK全名为汉字内码扩展规范，英文名Chinese Internal Code Specification。共收录汉字21003个、符号883个，并提供1894个造字码位，简、繁体字融于一库。</p><h3 id="2、URL转码"><a href="#2、URL转码" class="headerlink" title="2、URL转码"></a>2、URL转码</h3><p>​            URL编码是一种浏览器用来打包表单输入的格式。浏览器从表单中获取所有的name和其中的值 ，将它们以name/value参数编码（移去那些不能传送的字符，将数据排行等等）作为URL的一部分或者分离地发给服务器。举个例子，就像在有些浏览器的地址栏中会看到%20、%27诸如此类的符号，这其实就是URL编码。</p><h3 id="3、addslashes-函数"><a href="#3、addslashes-函数" class="headerlink" title="3、addslashes()函数"></a>3、addslashes()函数</h3><p>​            提到宽字节注入就有一个不得不提的php函数addslashes()函数，这也是为什么要宽字节注入的原因之一。<br>​    addslashes()函数的作用是返回在预定义字符之前添加反斜杠的字符串。预定义的字符有单引号（’），双引号（”），反斜杠（\），NULL。</p><p>​    什么意思呢，学函数最好的方法就是去用它，让我们来看一个例子。<img src="/images/pasted-0.png" alt="pasted-0"></p><p>可以看到，addslashes函数在预定义字符前加了\，也就是进行了转义，相当于简单的预防了一下sql注入，但是读到下面你就会发现，其实它并没有什么卵用。</p><h3 id="4、宽字节注入"><a href="#4、宽字节注入" class="headerlink" title="4、宽字节注入"></a>4、宽字节注入</h3><p>​            说了这么多，还是没说到，这些GBK编码和URL转码和宽字节注入到底有什么关系。由于GBK编码是双字节的，也就是我们常说的宽字节，这里我们可能稍微懂了为什么它叫宽字节了。具体的内容让我们接着往下看。刚刚说了，由于addslashes函数的转义作用，导致一些符号被转义，无法进行正常的sql注入，必须想办法去绕柱这个\。而这里绕过的方法有两种，一种是在\前面加个\ (用魔法来打败魔法)；另一种则是我们说的宽字节，由于GBK为双字节编码，在编码时它会把一个字节“吃掉”，导致\变成乱码，以此来绕过，而我们常用的就是%df。例如在单引号前加%df，本来是未加%df前会进行转义变成 “ \ ‘ “,但是加入%df后GBK编码则会将%df%5C（%5C是\的URL转码）一起编码，从而达到绕过的作用。因此我们也从中知道了宽字节注入只有党=当数据库编码为GBK时才适用。</p><h2 id="三、结语"><a href="#三、结语" class="headerlink" title="三、结语"></a>三、结语</h2><p>​    本人纯小白一枚，第一次写博客，如有错误，还请看到这篇文章的各位大佬指出。</p>]]></content>
+    
+    
+    <categories>
+      
+      <category>web</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>sql</tag>
+      
+      <tag>web</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  
+</search>
